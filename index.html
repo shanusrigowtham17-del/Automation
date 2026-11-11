@@ -105,4 +105,208 @@ main{padding:56px 48px 80px}
 <body>
 <header>
   <div class="brand">
-    <div class="logo"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.500 6-3v-4.500"/></svg></div>
+    <div><div class="brand-name">Laureate</div><div class="brand-sub">Certificate Systems</div></div>
+  </div>
+  <div class="status">
+    <span class="online"><span class="dot"></span>Workflow online</span>
+    <button class="admin">Admin <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="batch">Batch No. 024</div>
+    <h2>Issue with confidence.</h2>
+    <p>Turn one clean data file into individually issued, beautifully consistent certificates.</p>
+    <ol class="steps" id="steps">
+      <li data-s="1"><span class="num">01</span>Student data</li>
+      <li data-s="2"><span class="num">02</span>Configuration</li>
+      <li data-s="3"><span class="num">03</span>Templates</li>
+      <li data-s="4"><span class="num">04</span>Dispatch</li>
+    </ol>
+  </aside>
+
+  <main>
+    <div class="wrap">
+      <div class="eyebrow">Certificate Automation Platform</div>
+      <div class="title">
+        <h1>Prepare your issue</h1>
+        <p>Complete the four steps below. Your batch is checked before dispatch.</p>
+      </div>
+
+      <section class="panel">
+        <div class="panel-head"><span class="badge">01</span><h3>Upload student data</h3></div>
+        <label class="drop big" id="dataDrop" tabindex="0">
+          <span class="up"><svg viewBox="0 0 24 24"><path d="M12 15V4M7 8l5-5 5 5M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4"/></svg></span>
+          <strong>Choose CSV or Excel file</strong>
+          <small>or drag and drop · up to 10 MB</small>
+          <input type="file" id="dataFile" accept=".csv,.xlsx,.xls" hidden>
+        </label>
+        <div class="fileinfo" id="dataInfo" hidden></div>
+        <div class="err" id="dataErr"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><span class="badge">02</span><h3>Certificate configuration</h3></div>
+        <div class="counters">
+          <div class="counter">
+            <label>Number of domains</label>
+            <div class="ctrl">
+              <button type="button" data-t="domains" data-d="-1" aria-label="Decrease domains">−</button>
+              <output id="domains">02</output>
+              <button type="button" data-t="domains" data-d="1" aria-label="Increase domains">+</button>
+            </div>
+          </div>
+          <div class="counter">
+            <label>Achievement types</label>
+            <div class="ctrl">
+              <button type="button" data-t="types" data-d="-1" aria-label="Decrease achievement types">−</button>
+              <output id="types">02</output>
+              <button type="button" data-t="types" data-d="1" aria-label="Increase achievement types">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="required"><span>Required template images</span><b id="required">4</b></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><span class="badge">03</span><h3>Upload certificate templates</h3></div>
+        <label class="drop row" id="tplDrop" tabindex="0">
+          <span class="imgico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.500"/><path d="M21 15l-5-5L5 21"/></svg></span>
+          <span class="t"><strong>Select certificate artwork</strong><br><small id="tplHint">PNG or JPG · exactly 4 images required</small></span>
+          <span class="arrow">→</span>
+          <input type="file" id="tplFiles" accept="image/png,image/jpeg" multiple hidden>
+        </label>
+        <div class="thumbs" id="thumbs"></div>
+        <div class="err" id="tplErr"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><span class="badge">04</span><h3>Trigger generation</h3></div>
+        <p class="lead">Your cleaned records, configuration, and template details are ready for secure dispatch.</p>
+        <button class="send" id="send" disabled>
+          <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>Send to n8n workflow
+        </button>
+        <div class="msg" id="msg" role="status"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+// Webhook URL mapped directly to your n8n setup
+const WEBHOOK_URL = "https://pokemon17.app.n8n.cloud/webhook/streamlit-cert";
+
+const $ = id => document.getElementById(id);
+const state = { data:null, tpl:[], domains:2, types:2 };
+const pad = n => String(n).padStart(2,"0");
+const required = () => state.domains * state.types;
+
+function refresh(){
+  $("domains").textContent = pad(state.domains);
+  $("types").textContent = pad(state.types);
+  $("required").textContent = required();
+  $("tplHint").textContent = `PNG or JPG · exactly ${required()} images required`;
+  document.querySelectorAll(".ctrl button").forEach(b=>{
+    const v = state[b.dataset.t], d = +b.dataset.d;
+    b.disabled = (d<0 && v<=1) || (d>0 && v>=10);
+  });
+  const tplOk = state.tpl.length === required();
+  $("tplErr").textContent = state.tpl.length && !tplOk
+    ? `Select exactly ${required()} images (you chose ${state.tpl.length}).` : "";
+  $("tplDrop").classList.toggle("ready", tplOk);
+  $("send").disabled = !(state.data && tplOk);
+  document.querySelectorAll("#steps li").forEach(li=>{
+    const s = +li.dataset.s;
+    const done = s===1 ? !!state.data : s===2 ? !!state.data : s===3 ? tplOk : (state.data && tplOk);
+    li.classList.toggle("done", done && s<4);
+  });
+}
+
+document.querySelectorAll(".ctrl button").forEach(b=>b.addEventListener("click",()=>{
+  state[b.dataset.t] += +b.dataset.d; refresh();
+}));
+
+function wireDrop(el, input, handler){
+  el.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();input.click();} });
+  ["dragenter","dragover"].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();el.classList.add("over");}));
+  ["dragleave","drop"].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();el.classList.remove("over");}));
+  el.addEventListener("drop",e=>handler(e.dataTransfer.files));
+  input.addEventListener("change",()=>handler(input.files));
+}
+
+wireDrop($("dataDrop"), $("dataFile"), files=>{
+  const f = files[0]; $("dataErr").textContent = "";
+  if(!f) return;
+  if(!/\.(csv|xlsx|xls)$/i.test(f.name)) return $("dataErr").textContent = "Choose a .csv, .xlsx or .xls file.";
+  if(f.size > 10*1024*1024) return $("dataErr").textContent = "File is larger than 10 MB.";
+  state.data = f;
+  $("dataInfo").hidden = false;
+  $("dataInfo").textContent = `${f.name} · ${(f.size/1024).toFixed(1)} KB`;
+  $("dataDrop").classList.add("ready");
+  refresh();
+});
+
+wireDrop($("tplDrop"), $("tplFiles"), files=>{
+  const list = [...files].filter(f=>/^image\/(png|jpeg)$/.test(f.type));
+  state.tpl = list;
+  $("thumbs").innerHTML = "";
+  list.forEach(f=>{
+    const fig = document.createElement("figure");
+    const img = document.createElement("img"); img.src = URL.createObjectURL(f); img.alt = f.name;
+    const cap = document.createElement("figcaption"); cap.textContent = f.name;
+    fig.append(img, cap); $("thumbs").append(fig);
+  });
+  refresh();
+});
+
+$("send").addEventListener("click", async ()=>{
+  const msg = $("msg"); msg.className = "msg"; msg.textContent = "Sending…";
+  $("send").disabled = true;
+  
+  const fd = new FormData();
+  fd.append("studentData", state.data);
+  fd.append("domains", state.domains);
+  fd.append("achievementTypes", state.types);
+  
+  // Append the images (n8n looks for template_1, template_2, etc.)
+  state.tpl.forEach((f,i)=>fd.append(`template_${i+1}`, f));
+  
+  // The layout that perfectly places the name on top of the uploaded background.
+  // Adjust "top: 48%;" if the name renders too high or too low on the certificate.
+  const customHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: A4 landscape; margin: 0; }
+    html, body { margin: 0; padding: 0; width: 297mm; height: 210mm; position: relative; font-family: 'Georgia', serif; }
+    .bg-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; object-fit: contain; }
+    
+    /* Modify top: 48% to shift text up or down */
+    .student-name { position: absolute; top: 48%; left: 0; width: 100%; text-align: center; font-size: 46pt; font-weight: bold; color: #111827; z-index: 10; }
+  </style>
+</head>
+<body>
+  <img class="bg-image" src="{{BG_IMG_DATA_URI}}" />
+  <div class="student-name">{{NAME}}</div>
+</body>
+</html>`;
+
+  fd.append("templateHtml", customHtml);
+
+  try{
+    const r = await fetch(WEBHOOK_URL, { method:"POST", body:fd });
+    if(!r.ok) throw new Error("Server responded " + r.status);
+    msg.className = "msg ok"; msg.textContent = "Batch sent. Certificate generation has started.";
+  }catch(e){
+    msg.className = "msg bad"; msg.textContent = "Could not reach the workflow: " + e.message;
+    $("send").disabled = false;
+  }
+});
+
+refresh();
+</script>
+</body>
+</html>
