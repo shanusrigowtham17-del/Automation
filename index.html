@@ -195,7 +195,6 @@ main{padding:56px 48px 80px}
 </div>
 
 <script>
-// Webhook URL mapped directly to your n8n setup
 const WEBHOOK_URL = "https://pokemon17.app.n8n.cloud/webhook/streamlit-cert";
 
 const $ = id => document.getElementById(id);
@@ -270,11 +269,9 @@ $("send").addEventListener("click", async ()=>{
   fd.append("domains", state.domains);
   fd.append("achievementTypes", state.types);
   
-  // Append the images (n8n looks for template_1, template_2, etc.)
   state.tpl.forEach((f,i)=>fd.append(`template_${i+1}`, f));
   
-  // The layout that perfectly places the name on top of the uploaded background.
-  // Adjust "top: 48%;" if the name renders too high or too low on the certificate.
+  // Custom exact layout matching your certificate design lines (Name perfectly aligned on line)
   const customHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -283,9 +280,7 @@ $("send").addEventListener("click", async ()=>{
     @page { size: A4 landscape; margin: 0; }
     html, body { margin: 0; padding: 0; width: 297mm; height: 210mm; position: relative; font-family: 'Georgia', serif; }
     .bg-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; object-fit: contain; }
-    
-    /* Modify top: 48% to shift text up or down */
-    .student-name { position: absolute; top: 48%; left: 0; width: 100%; text-align: center; font-size: 46pt; font-weight: bold; color: #111827; z-index: 10; }
+    .student-name { position: absolute; top: 53%; left: 0; width: 100%; text-align: center; font-size: 42pt; font-weight: bold; color: #111827; z-index: 10; }
   </style>
 </head>
 <body>
