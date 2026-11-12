@@ -71,22 +71,10 @@ main{padding:56px 48px 80px}
 .err{margin-top:10px;font-size:13px;color:var(--accent);font-weight:600;min-height:0}
 
 /* Form Styles for Email Input */
-.field {margin-bottom:24px;}
+.field {margin-bottom:0;}
 .field label {display:block;font-size:12px;letter-spacing:.18em;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:12px;}
 .field input {width:100%;height:48px;padding:0 16px;background:var(--field);border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:15px;color:var(--ink);transition:all .2s;}
 .field input:focus {outline:none;border-color:var(--forest);background:#fff;}
-
-.counters{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-.counter{border:1px solid var(--line);padding:22px 28px 26px}
-.counter label{display:block;font-size:12px;letter-spacing:.18em;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:22px}
-.ctrl{display:flex;align-items:center;justify-content:space-between}
-.ctrl button{width:36px;height:36px;background:#fff;border:1px solid var(--line);font-size:20px;line-height:1}
-.ctrl button:hover{border-color:var(--forest)}
-.ctrl button:disabled{opacity:.35;cursor:not-allowed}
-.ctrl output{font-family:var(--serif);font-size:56px;line-height:1}
-.required{background:var(--forest);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 40px;height:64px;margin-top:24px}
-.required span{color:rgba(255,255,255,.75);font-size:15px}
-.required b{font-family:var(--serif);font-weight:500;font-size:44px}
 
 .thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
 .thumbs figure{width:92px}
@@ -104,7 +92,7 @@ main{padding:56px 48px 80px}
   .layout{grid-template-columns:1fr}
   aside{padding:36px 24px}aside h2{font-size:44px}.steps,aside::before,aside::after{display:none}
   main{padding:32px 18px 60px}.title h1{font-size:44px}
-  .counters{grid-template-columns:1fr}.status .online{display:none}
+  .status .online{display:none}
 }
 </style>
 </head>
@@ -155,39 +143,17 @@ main{padding:56px 48px 80px}
 
       <section class="panel">
         <div class="panel-head"><span class="badge">02</span><h3>Certificate configuration</h3></div>
-        
-        <!-- Organizer Email Input Field Added -->
         <div class="field">
           <label for="orgEmail">Organizer Email (For Reports & Approvals)</label>
           <input type="email" id="orgEmail" placeholder="e.g. hello@laureatesystems.com" required>
         </div>
-
-        <div class="counters">
-          <div class="counter">
-            <label>Number of domains</label>
-            <div class="ctrl">
-              <button type="button" data-t="domains" data-d="-1" aria-label="Decrease domains">−</button>
-              <output id="domains">02</output>
-              <button type="button" data-t="domains" data-d="1" aria-label="Increase domains">+</button>
-            </div>
-          </div>
-          <div class="counter">
-            <label>Achievement types</label>
-            <div class="ctrl">
-              <button type="button" data-t="types" data-d="-1" aria-label="Decrease achievement types">−</button>
-              <output id="types">02</output>
-              <button type="button" data-t="types" data-d="1" aria-label="Increase achievement types">+</button>
-            </div>
-          </div>
-        </div>
-        <div class="required"><span>Required template images</span><b id="required">4</b></div>
       </section>
 
       <section class="panel">
         <div class="panel-head"><span class="badge">03</span><h3>Upload certificate templates</h3></div>
         <label class="drop row" id="tplDrop" tabindex="0">
           <span class="imgico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.500"/><path d="M21 15l-5-5L5 21"/></svg></span>
-          <span class="t"><strong>Select certificate artwork</strong><br><small id="tplHint">PNG or JPG · exactly 4 images required</small></span>
+          <span class="t"><strong>Select certificate artwork</strong><br><small id="tplHint">PNG or JPG · 1 or more images</small></span>
           <span class="arrow">→</span>
           <input type="file" id="tplFiles" accept="image/png,image/jpeg" multiple hidden>
         </label>
@@ -211,44 +177,24 @@ main{padding:56px 48px 80px}
 const WEBHOOK_URL = "https://pokemon17.app.n8n.cloud/webhook/streamlit-cert";
 
 const $ = id => document.getElementById(id);
-const state = { data:null, tpl:[], domains:2, types:2, email:"" };
-const pad = n => String(n).padStart(2,"0");
-const required = () => state.domains * state.types;
+const state = { data:null, tpl:[], email:"" };
 
 function refresh(){
   state.email = $("orgEmail").value.trim();
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email);
+  const tplOk = state.tpl.length > 0;
 
-  $("domains").textContent = pad(state.domains);
-  $("types").textContent = pad(state.types);
-  $("required").textContent = required();
-  $("tplHint").textContent = `PNG or JPG · exactly ${required()} images required`;
-  document.querySelectorAll(".ctrl button").forEach(b=>{
-    const v = state[b.dataset.t], d = +b.dataset.d;
-    b.disabled = (d<0 && v<=1) || (d>0 && v>=10);
-  });
-  
-  const tplOk = state.tpl.length === required();
-  $("tplErr").textContent = state.tpl.length && !tplOk
-    ? `Select exactly ${required()} images (you chose ${state.tpl.length}).` : "";
   $("tplDrop").classList.toggle("ready", tplOk);
-  
-  // The Send button remains disabled until data, templates, and the valid organizer email are provided
   $("send").disabled = !(state.data && tplOk && emailOk);
   
   document.querySelectorAll("#steps li").forEach(li=>{
     const s = +li.dataset.s;
-    const done = s===1 ? !!state.data : s===2 ? !!state.data && emailOk : s===3 ? tplOk : (state.data && tplOk && emailOk);
+    const done = s===1 ? !!state.data : s===2 ? emailOk : s===3 ? tplOk : (state.data && tplOk && emailOk);
     li.classList.toggle("done", done && s<4);
   });
 }
 
-// Watch email field for changes
 $("orgEmail").addEventListener("input", refresh);
-
-document.querySelectorAll(".ctrl button").forEach(b=>b.addEventListener("click",()=>{
-  state[b.dataset.t] += +b.dataset.d; refresh();
-}));
 
 function wireDrop(el, input, handler){
   el.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();input.click();} });
@@ -289,10 +235,6 @@ $("send").addEventListener("click", async ()=>{
   
   const fd = new FormData();
   fd.append("studentData", state.data);
-  fd.append("domains", state.domains);
-  fd.append("achievementTypes", state.types);
-  
-  // Explicitly attach the organizer email to the fetch payload
   fd.append("organizerEmail", state.email);
   
   state.tpl.forEach((f,i)=>fd.append(`template_${i+1}`, f));
