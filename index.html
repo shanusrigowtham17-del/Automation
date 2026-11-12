@@ -70,6 +70,12 @@ main{padding:56px 48px 80px}
 .fileinfo{margin-top:10px;font-size:13px;color:var(--ok);font-weight:600}
 .err{margin-top:10px;font-size:13px;color:var(--accent);font-weight:600;min-height:0}
 
+/* Form Styles for Email Input */
+.field {margin-bottom:24px;}
+.field label {display:block;font-size:12px;letter-spacing:.18em;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:12px;}
+.field input {width:100%;height:48px;padding:0 16px;background:var(--field);border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:15px;color:var(--ink);transition:all .2s;}
+.field input:focus {outline:none;border-color:var(--forest);background:#fff;}
+
 .counters{display:grid;grid-template-columns:1fr 1fr;gap:24px}
 .counter{border:1px solid var(--line);padding:22px 28px 26px}
 .counter label{display:block;font-size:12px;letter-spacing:.18em;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:22px}
@@ -149,6 +155,13 @@ main{padding:56px 48px 80px}
 
       <section class="panel">
         <div class="panel-head"><span class="badge">02</span><h3>Certificate configuration</h3></div>
+        
+        <!-- Organizer Email Input Field Added -->
+        <div class="field">
+          <label for="orgEmail">Organizer Email (For Reports & Approvals)</label>
+          <input type="email" id="orgEmail" placeholder="e.g. hello@laureatesystems.com" required>
+        </div>
+
         <div class="counters">
           <div class="counter">
             <label>Number of domains</label>
@@ -198,11 +211,14 @@ main{padding:56px 48px 80px}
 const WEBHOOK_URL = "https://pokemon17.app.n8n.cloud/webhook/streamlit-cert";
 
 const $ = id => document.getElementById(id);
-const state = { data:null, tpl:[], domains:2, types:2 };
+const state = { data:null, tpl:[], domains:2, types:2, email:"" };
 const pad = n => String(n).padStart(2,"0");
 const required = () => state.domains * state.types;
 
 function refresh(){
+  state.email = $("orgEmail").value.trim();
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email);
+
   $("domains").textContent = pad(state.domains);
   $("types").textContent = pad(state.types);
   $("required").textContent = required();
@@ -211,17 +227,24 @@ function refresh(){
     const v = state[b.dataset.t], d = +b.dataset.d;
     b.disabled = (d<0 && v<=1) || (d>0 && v>=10);
   });
+  
   const tplOk = state.tpl.length === required();
   $("tplErr").textContent = state.tpl.length && !tplOk
     ? `Select exactly ${required()} images (you chose ${state.tpl.length}).` : "";
   $("tplDrop").classList.toggle("ready", tplOk);
-  $("send").disabled = !(state.data && tplOk);
+  
+  // The Send button remains disabled until data, templates, and the valid organizer email are provided
+  $("send").disabled = !(state.data && tplOk && emailOk);
+  
   document.querySelectorAll("#steps li").forEach(li=>{
     const s = +li.dataset.s;
-    const done = s===1 ? !!state.data : s===2 ? !!state.data : s===3 ? tplOk : (state.data && tplOk);
+    const done = s===1 ? !!state.data : s===2 ? !!state.data && emailOk : s===3 ? tplOk : (state.data && tplOk && emailOk);
     li.classList.toggle("done", done && s<4);
   });
 }
+
+// Watch email field for changes
+$("orgEmail").addEventListener("input", refresh);
 
 document.querySelectorAll(".ctrl button").forEach(b=>b.addEventListener("click",()=>{
   state[b.dataset.t] += +b.dataset.d; refresh();
@@ -269,9 +292,11 @@ $("send").addEventListener("click", async ()=>{
   fd.append("domains", state.domains);
   fd.append("achievementTypes", state.types);
   
+  // Explicitly attach the organizer email to the fetch payload
+  fd.append("organizerEmail", state.email);
+  
   state.tpl.forEach((f,i)=>fd.append(`template_${i+1}`, f));
   
-  // Custom exact layout matching your certificate design lines (Name perfectly aligned on line)
   const customHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -280,7 +305,7 @@ $("send").addEventListener("click", async ()=>{
     @page { size: A4 landscape; margin: 0; }
     html, body { margin: 0; padding: 0; width: 297mm; height: 210mm; position: relative; font-family: 'Georgia', serif; }
     .bg-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; object-fit: contain; }
-    .student-name { position: absolute; top: 53%; left: 0; width: 100%; text-align: center; font-size: 42pt; font-weight: bold; color: #111827; z-index: 10; }
+    .student-name { position: absolute; top: 53%; left: 0; width: 100%; text-align: center; font-size: 36pt; font-weight: bold; color: #111827; z-index: 10; }
   </style>
 </head>
 <body>
